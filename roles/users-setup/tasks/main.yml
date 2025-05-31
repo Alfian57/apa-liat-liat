@@ -8,6 +8,7 @@
 - name: Create users with advanced configuration
   ansible.builtin.user:
     name: "{{ item.name }}"
+    password: "{{ item.password | default('') }}"
     comment: "{{ item.comment }}"
     groups: "{{ item.groups | default([]) }}"
     shell: "{{ item.shell | default('/bin/bash') }}"
@@ -35,3 +36,10 @@
     state: present
   loop: "{{ users }}"
   when: item.ssh_key is defined
+
+- name: Reboot
+  ansible.builtin.reboot:
+    msg: "Rebooting to apply user changes"
+    connect_timeout: 5
+    reboot_timeout: 600
+  failed_when: false
