@@ -1,21 +1,49 @@
 services:
   traefik:
-    container_name: traefik
-    image: traefik:v3.4
+    image: "traefik:v2.11"
+    container_name: "traefik"
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - web
+      - traefik_network
     ports:
       - "80:80"
       - "443:443"
-      - "127.0.0.1:8080:8080"
+      - "8080:8080" # Traefik Dashboard, adjust as needed
+    environment:
+      # Cloudflare API credentials for DNS challenge
+      # These should be securely injected, e.g., via Ansible Vault or a .env file
+      - "CF_API_EMAIL={{ cloudflare_api_email }}" # From Ansible vars/main.yml or .env
+      - "CF_API_KEY={{ cloudflare_api_key }}" # From Ansible vars/main.yml or .env
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./traefik.yml:/etc/traefik/traefik.yml
-    networks:
-      - traefik_network
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/opt/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "/opt/traefik/acme.json:/etc/traefik/acme.json" # Persistent storage for certificates
+      - "/opt/traefik/log:/var/log/traefik" # Log directory
+    command:
+      - "--configFile=/etc/traefik/traefik.yml" # Point to the static configuration file
+      - "--log.filePath=/var/log/traefik/traefik.log" # Traefik logs
+      - "--accesslog.filePath=/var/log/traefik/access.log" # Access logs
+      - "--accesslog=true"
     labels:
+      # Optional: labels to expose Traefik dashboard via Traefik itself
       - "traefik.enable=true"
-      - "traefik.http.middlewares.traefik-dashboard-auth.basicauth.users=${BASIC_AUTH_USERS}"
+      - "traefik.http.routers.traefik-dashboard-internal.rule=Host(`traefik.alfian-gading.site`)" # Change to your preferred dashboard domain
+      - "traefik.http.routers.traefik-dashboard-internal.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard-internal.middlewares=traefik-auth@file" # Use the middleware defined in traefik.yml
+      - "traefik.http.routers.traefik-dashboard-internal.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard-internal.tls.certresolver=cloudflare"
+      # Global redirect to HTTPS for all routers by default
+      - "traefik.http.routers.http-redirect.entrypoints=web"
+      - "traefik.http.routers.http-redirect.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.http-redirect.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.http-redirect.service=noop@internal" # This service is just a placeholder
 
 networks:
+  web:
+    external: true # Use an existing network
   traefik_network:
-    name: traefik_network

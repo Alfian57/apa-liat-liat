@@ -1,34 +1,55 @@
 ---
-- name: Create traefik directory
+- name: Create Traefik configuration directory
   ansible.builtin.file:
-    path: /opt/docker-stack/infrastructure/traefik
+    path: /opt/traefik
     state: directory
     mode: "0755"
+    owner: root
+    group: root
 
-- name: Copy traefik docker-compose.yml
-  ansible.builtin.copy:
-    src: "{{ role_path }}/files/docker-compose.yml"
-    dest: /opt/docker-stack/infrastructure/traefik/docker-compose.yml
+- name: Create Traefik log directory
+  ansible.builtin.file:
+    path: /opt/traefik/log
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Copy Traefik static configuration (traefik.yml)
+  ansible.builtin.template:
+    src: traefik.yml
+    dest: /opt/traefik/traefik.yml
     mode: "0644"
+    owner: root
+    group: root
+  notify: Restart Traefik
 
-- name: Copy traefik configuration files
-  ansible.builtin.copy:
-    src: "{{ role_path }}/files/traefik.yml"
-    dest: /opt/docker-stack/infrastructure/traefik/traefik.yml
+- name: Create .env file for Cloudflare credentials
+  ansible.builtin.template:
+    src: traefik.env.j2 # A new template file to be created
+    dest: /opt/traefik/.env
+    mode: "0600" # Secure permissions
+    owner: root
+    group: root
+  notify: Restart Traefik
+
+- name: Copy Traefik Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml
+    dest: /opt/traefik/docker-compose.yml
     mode: "0644"
+    owner: root
+    group: root
+  notify: Restart Traefik
 
-- name: Copy .env
-  ansible.builtin.copy:
-    src: "{{ role_path }}/files/.env"
-    dest: /opt/docker-stack/infrastructure/traefik/.env
-    mode: "0644"
-
-- name: Ensure Docker Compose is installed
-  ansible.builtin.apt:
-    name: docker-compose-plugin
+- name: Ensure 'web' network exists
+  community.docker.docker_network:
+    name: web
     state: present
 
-- name: Run docker-compose up in traefik directory
-  community.docker.docker_compose_v2:
-    project_src: /opt/docker-stack/infrastructure/traefik
+- name: Bring up Traefik service
+  community.docker.docker_compose:
+    project_src: /opt/traefik
     state: present
+    pull: true
+  notify: Restart Traefik

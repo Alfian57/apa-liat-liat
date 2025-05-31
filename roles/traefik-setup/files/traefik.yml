@@ -1,20 +1,100 @@
-api:
-  dashboard: true
+# roles/traefik-setup/files/traefik.yml
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: true
 
-providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
-    network: traefik_network
-
+# Entrypoints define the ports that Traefik listens on.
 entryPoints:
   web:
     address: ":80"
     http:
       redirections:
         entryPoint:
-          to: websecure
-          scheme: https
-
+          to: "websecure"
+          scheme: "https"
   websecure:
     address: ":443"
+  traefik:
+    address: ":8080" # Traefik dashboard port, typically not exposed publicly
+
+# Providers enable Traefik to discover services.
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false # Only expose containers explicitly labeled
+    network: "web" # Traefik will only connect to containers in this network
+  file:
+    directory: "/etc/traefik/dynamic" # Directory for dynamic configuration
+    watch: true
+
+# API & Dashboard configuration
+api:
+  dashboard: true
+  insecure: false # Set to false for production
+  debug: false
+
+# Certificates resolver for Let's Encrypt
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: "alfiangading81@gmail.com" # Your email for ACME notifications
+      storage: "/etc/traefik/acme.json" # Persistent storage for certificates
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: "0" # Wait before checking DNS propagation (seconds)
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+
+# Log settings
+log:
+  level: INFO # DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+
+# Access Log settings
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  bufferingSize: 100 # Flush logs in batches of 100
+
+# For production, consider using a separate file for dashboard authentication
+# and loading it via the file provider for better security management.
+# Example: Basic authentication for Traefik dashboard
+http:
+  middlewares:
+    # Middleware for basic authentication for the Traefik dashboard
+    traefik-auth:
+      basicAuth:
+        users:
+          - "{{ traefik_dashboard_auth }}" # This will be replaced by Ansible
+
+  # Dynamic configuration for Traefik dashboard (for best practices, you can also put this in a separate dynamic config file)
+  routers:
+    traefik-dashboard:
+      entryPoints:
+        - "traefik"
+      service: "api@internal"
+      rule: "Host(`traefik.alfian-gading.site`)" # Change to your preferred dashboard domain
+      middlewares:
+        - "traefik-auth"
+      tls: {} # Enable TLS for the dashboard if you want to access it via HTTPS directly
+
+# This section is for dynamic configuration of your applications.
+# You will typically define these as Docker labels on your application containers.
+# However, for simple cases, you can also define them here if you are not using Docker labels.
+# For alfian-gading.site
+#   routers:
+#     alfian-gading-router:
+#       entryPoints:
+#         - "websecure"
+#       rule: "Host(`alfian-gading.site`)"
+#       service: "your-alfian-gading-service@docker" # Replace with your service name
+#       tls:
+#         certResolver: "cloudflare"
+#
+#   # For mami-ledy.site
+#     mami-ledy-router:
+#       entryPoints:
+#         - "websecure"
+#       rule: "Host(`mami-ledy.site`)"
+#       service: "your-mami-ledy-service@docker" # Replace with your service name
+#       tls:
+#         certResolver: "cloudflare"
