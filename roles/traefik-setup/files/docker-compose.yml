@@ -1,0 +1,21 @@
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:v3.4
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.yml:/etc/traefik/traefik.yml
+    networks:
+      - traefik_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.traefik-dashboard-auth.basicauth.users=${BASIC_AUTH_USERS}"
+
+networks:
+  traefik_network:
+    name: traefik_network

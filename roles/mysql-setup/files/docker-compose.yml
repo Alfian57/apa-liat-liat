@@ -1,0 +1,36 @@
+services:
+  mysql-db:
+    image: mysql:9.3.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - mysql_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2.2
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql-db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      - mysql-db
+    networks:
+      - mysql_network
+      - traefik_network
+    ports:
+      - "127.0.0.1:8081:80"
+    labels:
+      - "traefik.enable=true"
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  mysql_network:
+    name: mysql_network
+  traefik_network:
+    external: true

@@ -1,0 +1,29 @@
+---
+- name: Create postgres directory
+  ansible.builtin.file:
+    path: /opt/docker-stack/infrastructure/postgres
+    state: directory
+    mode: "0755"
+
+- name: Copy postgres docker-compose.yml
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/docker-compose.yml"
+    dest: /opt/docker-stack/infrastructure/postgres/docker-compose.yml
+    mode: "0644"
+
+- name: Copy .env
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/.env"
+    dest: /opt/docker-stack/infrastructure/postgres/.env
+    mode: "0644"
+
+- name: Ensure Docker Compose is installed
+  ansible.builtin.apt:
+    name: docker-compose-plugin
+    state: present
+
+- name: Run docker-compose up in postgres directory
+  community.docker.docker_compose_v2:
+    project_src: /opt/docker-stack/infrastructure/postgres
+    env_files: /opt/docker-stack/infrastructure/postgres/.env
+    state: present

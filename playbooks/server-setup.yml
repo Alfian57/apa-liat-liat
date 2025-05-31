@@ -1,0 +1,15 @@
+---
+- name: Setup Server Playbook
+  hosts: all
+  gather_facts: true
+
+  roles:
+    - update-apt
+    - users-setup
+    - git-setup
+    - docker-setup
+    - autoheal-setup
+    - traefik-setup
+    - mysql-setup
+    - postgres-setup
+    - redis-setup

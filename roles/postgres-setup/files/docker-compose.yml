@@ -1,0 +1,39 @@
+services:
+  postgres-db:
+    container_name: postgres_db
+    image: postgres:17.2
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - postgres_network
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:8.4
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
+    depends_on:
+      - postgres-db
+    networks:
+      - postgres_network
+      - traefik_network
+    ports:
+      - "127.0.0.1:8082:80"
+    labels:
+      - "traefik.enable=true"
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  postgres_network:
+    name: postgres_network
+  traefik_network:
+    external: true
