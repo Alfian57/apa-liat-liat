@@ -10,37 +10,68 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080" # Traefik Dashboard, adjust as needed
+      # Expose Traefik dashboard to localhost only for security
+      - "127.0.0.1:8080:8080"
     environment:
       # Cloudflare API credentials for DNS challenge
-      # These should be securely injected, e.g., via Ansible Vault or a .env file
-      - "CF_API_EMAIL={{ cloudflare_api_email }}" # From Ansible vars/main.yml or .env
-      - "CF_API_KEY={{ cloudflare_api_key }}" # From Ansible vars/main.yml or .env
+      - "CF_API_EMAIL={{ cloudflare_api_email }}"
+      - "CF_API_KEY={{ cloudflare_api_key }}"
+      # Add timezone for consistent logs
+      - "TZ=Asia/Jakarta"
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "/opt/docker-stack/infrastructure/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
-      - "/opt/docker-stack/infrastructure/traefik/acme.json:/etc/traefik/acme.json" # Persistent storage for certificates
-      - "/opt/docker-stack/infrastructure/traefik/log:/var/log/traefik" # Log directory
+      - "/opt/docker-stack/infrastructure/traefik/acme.json:/etc/traefik/acme.json"
+      - "/opt/docker-stack/infrastructure/traefik/log:/var/log/traefik"
     command:
-      - "--configFile=/etc/traefik/traefik.yml" # Point to the static configuration file
-      - "--log.filePath=/var/log/traefik/traefik.log" # Traefik logs
-      - "--accesslog.filePath=/var/log/traefik/access.log" # Access logs
+      - "--configFile=/etc/traefik/traefik.yml"
+      - "--log.filePath=/var/log/traefik/traefik.log"
+      - "--accesslog.filePath=/var/log/traefik/access.log"
       - "--accesslog=true"
+      - "--api.dashboard=true"
+      # Add ping service for healthcheck
+      - "--ping=true"
+      - "--ping.entrypoint=traefik"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/ping",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     labels:
-      # Optional: labels to expose Traefik dashboard via Traefik itself
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik-dashboard-internal.rule=Host(`traefik.alfian-gading.site`)" # Change to your preferred dashboard domain
+      # Dashboard configuration
+      - "traefik.http.routers.traefik-dashboard-internal.rule=Host(`traefik.alfian-gading.site`)"
       - "traefik.http.routers.traefik-dashboard-internal.service=api@internal"
-      - "traefik.http.routers.traefik-dashboard-internal.middlewares=traefik-auth@file" # Use the middleware defined in traefik.yml
+      - "traefik.http.routers.traefik-dashboard-internal.middlewares=traefik-auth@file"
       - "traefik.http.routers.traefik-dashboard-internal.entrypoints=websecure"
       - "traefik.http.routers.traefik-dashboard-internal.tls.certresolver=cloudflare"
-      # Global redirect to HTTPS for all routers by default
+
+      # Global HTTP to HTTPS redirect
       - "traefik.http.routers.http-redirect.entrypoints=web"
       - "traefik.http.routers.http-redirect.rule=HostRegexp(`{host:.+}`)"
       - "traefik.http.routers.http-redirect.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.routers.http-redirect.service=noop@internal" # This service is just a placeholder
+      - "traefik.http.routers.http-redirect.service=noop@internal"
+
+      # Security headers middleware
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.security-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
 
 networks:
   traefik_network:
+    name: traefik_network
+    driver: bridge

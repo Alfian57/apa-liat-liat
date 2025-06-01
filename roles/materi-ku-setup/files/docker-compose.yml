@@ -1,0 +1,54 @@
+services:
+  materi-ku:
+    image: ghcr.io/alfian57/materi-ku:latest
+    container_name: materi-ku
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - materi_ku_storage:/var/www/html/storage
+      - materi_ku_bootstrap_cache:/var/www/html/bootstrap/cache
+    networks:
+      - traefik_network
+      - mysql_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: sh -c "php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan optimize && php-fpm & nginx -g 'daemon off;'"
+    labels:
+      # Enable Traefik for this container
+      - "traefik.enable=true"
+
+      # HTTP Router configuration
+      - "traefik.http.routers.materi-ku.rule=Host(`materi-ku.alfian-gading.site`)"
+      - "traefik.http.routers.materi-ku.entrypoints=websecure"
+      - "traefik.http.routers.materi-ku.tls=true"
+      - "traefik.http.routers.materi-ku.tls.certresolver=cloudflare"
+
+      # Service configuration - assuming container exposes port 80 internally
+      - "traefik.http.services.materi-ku.loadbalancer.server.port=80"
+
+      # Middleware for security headers
+      - "traefik.http.middlewares.materi-ku-security.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.materi-ku-security.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.materi-ku-security.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.materi-ku-security.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.materi-ku-security.headers.stsPreload=true"
+      - "traefik.http.middlewares.materi-ku-security.headers.stsSeconds=31536000"
+      - "traefik.http.routers.materi-ku.middlewares=materi-ku-security"
+
+      # Define a network for Traefik to connect to this container
+      - "traefik.docker.network=traefik_network"
+
+networks:
+  traefik_network:
+    external: true
+  mysql_network:
+    external: true
+
+volumes:
+  materi_ku_storage:
+  materi_ku_bootstrap_cache:

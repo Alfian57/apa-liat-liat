@@ -1,3 +1,68 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for materi-ku-setup
+- name: Create directory for materi-ku application
+  ansible.builtin.file:
+    path: "/opt/docker-stack/applications/materi-ku"
+    state: directory
+    mode: "0755"
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+
+- name: Log in to GitHub Container Registry
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: "{{ github_username }}"
+    password: "{{ github_token }}"
+    reauthorize: true
+  no_log: true
+
+- name: Copy docker-compose file to server
+  ansible.builtin.copy:
+    src: docker-compose.yml
+    dest: "/opt/docker-stack/applications/materi-ku/docker-compose.yml"
+    mode: "0644"
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+
+- name: Copy .env file to server
+  ansible.builtin.copy:
+    src: .env
+    dest: "/opt/docker-stack/applications/materi-ku/.env"
+    mode: "0600" # More restrictive permissions for sensitive data
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+
+- name: Pull latest Docker image
+  community.docker.docker_image:
+    name: ghcr.io/alfian57/materi-ku:latest
+    source: pull
+    force_source: true
+    state: present
+
+- name: Ensure external networks exist
+  community.docker.docker_network:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - traefik_network
+    - mysql_network
+
+- name: Ensure Docker Compose is installed
+  ansible.builtin.apt:
+    name: docker-compose-plugin
+    state: present
+
+- name: Deploy materi-ku container with docker-compose
+  community.docker.docker_compose_v2:
+    project_src: "/opt/docker-stack/applications/materi-ku"
+    pull: always
+    remove_orphans: true
+    recreate: always
+    state: present
+
+- name: Verify container is running
+  community.docker.docker_container_info:
+    name: materi-ku
+  register: container_info
+  until: container_info.container.State.Health.Status == "healthy" or container_info.container.State.Health.Status == "starting"
+  retries: 10
+  delay: 10
