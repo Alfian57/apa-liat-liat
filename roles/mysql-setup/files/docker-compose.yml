@@ -21,11 +21,8 @@ services:
       - mysql-db
     networks:
       - mysql_network
-      - traefik_network
     ports:
       - "127.0.0.1:8081:80"
-    labels:
-      - "traefik.enable=true"
 
 volumes:
   mysql_data:
@@ -34,5 +31,3 @@ volumes:
 networks:
   mysql_network:
     name: mysql_network
-  traefik_network:
-    external: true

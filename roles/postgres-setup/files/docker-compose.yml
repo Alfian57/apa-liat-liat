@@ -22,11 +22,8 @@ services:
       - postgres-db
     networks:
       - postgres_network
-      - traefik_network
     ports:
       - "127.0.0.1:8082:80"
-    labels:
-      - "traefik.enable=true"
 
 volumes:
   postgres_data:
@@ -35,5 +32,3 @@ volumes:
 networks:
   postgres_network:
     name: postgres_network
-  traefik_network:
-    external: true

@@ -17,13 +17,10 @@ services:
       REDIS_HOSTS: redis
     networks:
       - redis_network
-      - traefik_network
     ports:
       - "127.0.0.1:8083:8081"
     depends_on:
       - redis
-    labels:
-      - "traefik.enable=true"
 
 volumes:
   redis_data:
@@ -32,5 +29,3 @@ volumes:
 networks:
   redis_network:
     name: redis_network
-  traefik_network:
-    external: true
