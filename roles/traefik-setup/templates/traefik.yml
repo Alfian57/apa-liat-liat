@@ -7,11 +7,11 @@ global:
 entryPoints:
   web:
     address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: "websecure"
-          scheme: "https"
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: "websecure"
+    #       scheme: "https"
   websecure:
     address: ":443"
   traefik:
@@ -37,7 +37,7 @@ api:
 certificatesResolvers:
   cloudflare:
     acme:
-      email: "alfiangading81@gmail.com" # Your email for ACME notifications
+      email: "alfiangadingsaputra@gmail.com" # Your email for ACME notifications
       storage: "/etc/traefik/acme.json" # Persistent storage for certificates
       dnsChallenge:
         provider: cloudflare

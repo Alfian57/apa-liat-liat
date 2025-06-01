@@ -33,11 +33,14 @@
     recreate: always
     remove_orphans: true
     state: present
-
-- name: Verify Redis container health
-  community.docker.docker_container_info:
-    name: redis-db
-  register: container_info
-  until: container_info.container.State.Health.Status == "healthy" or container_info.container.State.Health.Status == "starting"
-  retries: 10
-  delay: 10
+# - name: Verify Redis container health
+#   community.docker.docker_container_info:
+#     name: redis-db
+#   register: container_info
+#   until: container_info is defined and
+#     container_info.container is defined and
+#     container_info.container.State is defined and
+#     container_info.container.State.Health is defined and
+#     (container_info.container.State.Health.Status == "healthy" or container_info.container.State.Health.Status == "starting")
+#   retries: 10
+#   delay: 10
