@@ -1,7 +1,8 @@
+# roles/traefik-setup/tasks/main.yml
 ---
 - name: Create Traefik configuration directory
   ansible.builtin.file:
-    path: /opt/traefik
+    path: /opt/docker-stack/infrastructure/traefik
     state: directory
     mode: "0755"
     owner: root
@@ -9,16 +10,25 @@
 
 - name: Create Traefik log directory
   ansible.builtin.file:
-    path: /opt/traefik/log
+    path: /opt/docker-stack/infrastructure/traefik/log
     state: directory
     mode: "0755"
     owner: root
     group: root
 
+- name: Create dynamic configuration directory
+  ansible.builtin.file:
+    path: /etc/traefik/dynamic
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  notify: Restart Traefik
+
 - name: Copy Traefik static configuration (traefik.yml)
   ansible.builtin.template:
     src: traefik.yml
-    dest: /opt/traefik/traefik.yml
+    dest: /opt/docker-stack/infrastructure/traefik/traefik.yml
     mode: "0644"
     owner: root
     group: root
@@ -26,9 +36,9 @@
 
 - name: Create .env file for Cloudflare credentials
   ansible.builtin.template:
-    src: traefik.env.j2 # A new template file to be created
-    dest: /opt/traefik/.env
-    mode: "0600" # Secure permissions
+    src: traefik.env.j2
+    dest: /opt/docker-stack/infrastructure/traefik/.env
+    mode: "0600"
     owner: root
     group: root
   notify: Restart Traefik
@@ -36,20 +46,15 @@
 - name: Copy Traefik Docker Compose file
   ansible.builtin.template:
     src: docker-compose.yml
-    dest: /opt/traefik/docker-compose.yml
+    dest: /opt/docker-stack/infrastructure/traefik/docker-compose.yml
     mode: "0644"
     owner: root
     group: root
   notify: Restart Traefik
 
-- name: Ensure 'web' network exists
-  community.docker.docker_network:
-    name: web
-    state: present
-
 - name: Bring up Traefik service
-  community.docker.docker_compose:
-    project_src: /opt/traefik
+  community.docker.docker_compose_v2:
+    project_src: /opt/docker-stack/infrastructure/traefik
     state: present
-    pull: true
+    pull: always
   notify: Restart Traefik

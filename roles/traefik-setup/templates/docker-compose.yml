@@ -6,7 +6,6 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - web
       - traefik_network
     ports:
       - "80:80"
@@ -20,9 +19,9 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "/opt/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
-      - "/opt/traefik/acme.json:/etc/traefik/acme.json" # Persistent storage for certificates
-      - "/opt/traefik/log:/var/log/traefik" # Log directory
+      - "/opt/docker-stack/infrastructure/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "/opt/docker-stack/infrastructure/traefik/acme.json:/etc/traefik/acme.json" # Persistent storage for certificates
+      - "/opt/docker-stack/infrastructure/traefik/log:/var/log/traefik" # Log directory
     command:
       - "--configFile=/etc/traefik/traefik.yml" # Point to the static configuration file
       - "--log.filePath=/var/log/traefik/traefik.log" # Traefik logs
@@ -44,6 +43,4 @@ services:
       - "traefik.http.routers.http-redirect.service=noop@internal" # This service is just a placeholder
 
 networks:
-  web:
-    external: true # Use an existing network
   traefik_network:
