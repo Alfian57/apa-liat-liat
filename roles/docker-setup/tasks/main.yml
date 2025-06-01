@@ -4,7 +4,7 @@
     msg: "Docker installation is {{ 'enabled' if docker_install else 'disabled' }}"
 
 - name: Skip Docker installation
-  ansible.builtin.meta: end_play
+  ansible.builtin.meta: end_host
   when: not docker_install | bool
 
 - name: Ensure old versions of Docker are removed

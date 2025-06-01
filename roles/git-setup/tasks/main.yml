@@ -23,6 +23,14 @@
   become: false
   when: git_config_global | default(true)
 
+- name: Configure Git global user name
+  community.general.git_config:
+    name: user.name
+    scope: global
+    value: "{{ git_user_name }}"
+  become: false
+  when: git_config_global | default(true)
+
 - name: Set Git default branch name
   community.general.git_config:
     name: init.defaultBranch
